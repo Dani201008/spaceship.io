@@ -8,6 +8,7 @@ pygame.init()
 # Dimensions de l'écran et mode plein écran
 info = pygame.display.Info()
 WIDTH, HEIGHT = info.current_w, info.current_h
+print("")
 
 # Couleurs
 BLACK = (0, 0, 0)
