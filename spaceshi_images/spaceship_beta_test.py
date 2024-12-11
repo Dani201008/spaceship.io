@@ -1,4 +1,4 @@
-import pygame
+import  pygame
 import random
 import math
 
@@ -68,10 +68,11 @@ secondary_bullets = []
 aliens = []
 score = 0
 level = 1
+max_level = 10  # Set the maximum level for your game
 alien_spawn_rate = 0.005
 game_state = "menu"
 boss = None
-boss_health = 30
+boss_health = 50
 boss_direction = 1
 remaining_bullets = 1000000
 game_over = False
@@ -97,7 +98,7 @@ def reset_game():
     alien_speed = 2
     alien_spawn_rate = 0.005
     boss = None
-    boss_health = 30
+    boss_health = 50
     remaining_bullets = 100000
     game_over = False
     spaceship_image = spaceship_images[selected_skin]
@@ -128,7 +129,7 @@ def spawn_alien():
 
 def draw_boss_health_bar(boss_health, max_health, x, y):
     """Affiche la barre de vie du boss."""
-    bar_width = 300
+    bar_width = 500
     bar_height = 20
     health_percentage = boss_health / max_health
     pygame.draw.rect(screen, RED, (x + 225, y, bar_width, bar_height))  # Fond (rouge)
@@ -158,6 +159,16 @@ def draw_text(text, x, y, color=WHITE, font=font, centered=False):
     else:
         text_rect.topleft = (x, y)
     screen.blit(text_surface, text_rect)
+
+def show_level(level):
+    """Affiche le niveau actuel à l'écran, aligné en haut à droite."""
+    text = f"Niveau: {level}"
+    text_surface = large_font.render(text, True, WHITE)
+    text_rect = text_surface.get_rect()
+    text_rect.topright = (WIDTH - 10, 10)  # Positionné en haut à droite avec une marge de 10 pixels
+    screen.blit(text_surface, text_rect)
+
+
 
 
 # Boucle principale du jeu
@@ -192,25 +203,22 @@ while running:
                     {"rect": pygame.Rect(spaceship_x + 50 - 2, spaceship_y, 5, 15), "velocity": (0, -bullet_speed)}
                 )
                 remaining_bullets -= 1
-        elif event.type == pygame.MOUSEBUTTONDOWN and game_state == "playing" and event.button == 1:  # Clic gauche de la souris
-            if remaining_bullets > 0:
-                mouse_x, mouse_y = pygame.mouse.get_pos()
-                fire_secondary_weapon(mouse_x, mouse_y)
+        elif event.type == pygame.MOUSEBUTTONDOWN and game_state == "playing" and event.button == 1:
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            fire_secondary_weapon(mouse_x, mouse_y)
 
-    # Écran du menu
     # Écran du menu
     if game_state == "menu":
         screen.blit(background_images[0], (0, 0))
         draw_text("SPACESHIP SHOOTER", WIDTH // 2, HEIGHT // 6 - 30, RED, large_font, centered=True)
         draw_text("Appuyez sur ENTRÉE pour commencer", WIDTH // 2, HEIGHT // 6, WHITE, centered=True)
         draw_text("Utilisez GAUCHE/DROITE pour choisir le vaisseau", WIDTH // 2, HEIGHT // 6 + 40, WHITE, centered=True)
-
-        # Dessiner l'image du vaisseau actuellement sélectionné
         screen.blit(spaceship_images[selected_skin], (WIDTH // 2 - 50, HEIGHT // 2 + 100))
 
     # Écran de jeu
     elif game_state == "playing":
         screen.blit(background_images[(level - 1) % len(background_images)], (0, 0))
+        show_level(level)
 
         if not game_over:
             keys = pygame.key.get_pressed()
@@ -218,14 +226,10 @@ while running:
                 spaceship_x -= spaceship_speed
             if keys[pygame.K_RIGHT] and spaceship_x < WIDTH - 100:
                 spaceship_x += spaceship_speed
-            if keys[pygame.K_UP] and spaceship_y > 0:
-                spaceship_y -= spaceship_speed
-            if keys[pygame.K_DOWN] and spaceship_y < HEIGHT - 100:
-                spaceship_y += spaceship_speed
-            # Drawing the aiming line (straight up from the center of the spaceship)
+
             pygame.draw.line(screen, GREEN, (spaceship_x + 50, spaceship_y + 50), (spaceship_x + 50, 0), 2)
 
-            # Mettre à jour les balles
+            # Mise à jour des balles
             for bullet in bullets[:]:
                 bullet["rect"].x += bullet["velocity"][0]
                 bullet["rect"].y += bullet["velocity"][1]
@@ -248,63 +252,60 @@ while running:
                 if alien.y > HEIGHT:
                     game_over = True
                 if pygame.Rect(spaceship_x, spaceship_y, 100, 100).colliderect(alien):
-                    game_over = True  # Collision entre le vaisseau et un alien
+                    game_over = True
                 for bullet in bullets[:]:
                     if bullet["rect"].colliderect(alien):
                         bullets.remove(bullet)
                         aliens.remove(alien)
                         score += 1
-                        if score % 10 == 0:
+                        if score % 10 == 0 and level < max_level:
                             level += 1
                             alien_speed += 0.5
                             alien_spawn_rate += 0.002
+                        elif score % 10 == 0 and level == max_level:
+                            game_state = "victory"
                         break
                 for bullet in secondary_bullets[:]:
                     if bullet["rect"].colliderect(alien):
                         secondary_bullets.remove(bullet)
                         aliens.remove(alien)
                         score += 1
-                        if score % 10 == 0:
+                        if score % 10 == 0 and level < max_level:
                             level += 1
                             alien_speed += 0.5
                             alien_spawn_rate += 0.002
+                        elif score % 10 == 0 and level == max_level:
+                            game_state = "victory"
                         break
 
-            # Apparition du boss après le niveau 3
-            if level > 3 and boss is None:
+            # Apparition du boss
+            if level == max_level and 2 and boss is None:
                 boss = pygame.Rect(WIDTH // 2, 50, 800, 400)
-                boss_health = 30
+                boss_health = 50
 
-            # Logique du boss
             if boss:
                 boss.x += boss_direction * 5
                 if boss.left <= 0 or boss.right >= WIDTH:
                     boss_direction *= -1
-
-                # Vérification des collisions avec les balles régulières
                 for bullet in bullets[:]:
                     if bullet["rect"].colliderect(boss):
                         bullets.remove(bullet)
                         boss_health -= 1
-                        if boss_health <= 0:  # Boss vaincu
+                        if boss_health <= 0:
                             boss = None
                             game_state = "victory"
-
-                # Vérification des collisions avec les balles secondaires
                 for bullet in secondary_bullets[:]:
                     if bullet["rect"].colliderect(boss):
                         secondary_bullets.remove(bullet)
-                        boss_health -= 2  # Les balles secondaires font plus de dégâts
-                        if boss_health <= 0:  # Boss vaincu
+                        boss_health -= 2
+                        if boss_health <= 0:
                             boss = None
                             game_state = "victory"
 
-                # Dessiner le boss et sa barre de vie
                 if boss:
                     screen.blit(boss_image, boss)
-                    draw_boss_health_bar(boss_health, 30, boss.x, boss.y - 20)  # Déplacer la barre de vie avec le boss
+                    draw_boss_health_bar(boss_health, 50, boss.x, boss.y - 20)
 
-            # Dessiner les entités
             for alien in aliens:
                 screen.blit(alien_image, alien)
 
@@ -315,20 +316,17 @@ while running:
                 pygame.draw.ellipse(screen, BLUE, bullet["rect"])
 
             screen.blit(spaceship_image, (spaceship_x, spaceship_y))
-
-            # Afficher le score et les balles restantes
             draw_text(f"Score: {score}", 10, 10)
             draw_text(f"Balles restantes: {remaining_bullets}", 10, 40)
 
-        # Écran de game over
         if game_over:
-            draw_text("GAME OVER!", WIDTH // 2, HEIGHT // 6 - 30, RED, large_font, centered=True)
-            draw_text("Appuyez sur ENTRÉE pour recommencer", WIDTH // 2, HEIGHT // 6 + 10, WHITE, centered=True)
+            screen.fill(BLACK)
+            draw_text("GAME OVER!", WIDTH // 2, HEIGHT // 2 - 50, RED, large_font, centered=True)
+            draw_text("Appuyez sur ENTRÉE pour recommencer", WIDTH // 2, HEIGHT // 2 + 10, WHITE, centered=True)
 
-    # Écran de victoire
     elif game_state == "victory":
         screen.blit(background_images[0], (0, 0))
-        draw_text("VICTOIRE!", WIDTH // 2, HEIGHT // 6 - 30, WHITE, large_font, centered=True)
+        draw_text("FÉLICITATIONS, VOUS AVEZ GAGNÉ!", WIDTH // 2, HEIGHT // 6 - 30, WHITE, large_font, centered=True)
         draw_text("Appuyez sur ENTRÉE pour recommencer", WIDTH // 2, HEIGHT // 6 + 10, WHITE, centered=True)
 
     pygame.display.flip()
